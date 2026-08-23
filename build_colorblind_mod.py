@@ -36,7 +36,7 @@ STATE = os.path.join(HERE, "current_settings.txt")
 
 SHADER_INTERNAL = "shaders/vfx/generate_outlines_pc_50_ps.vcs"
 OUTLINE_RANGE_INTERNAL = "cfg/autoexec.cfg"
-OUTLINE_RANGE_CONFIG = b"citadel_player_outline_fade_range_max 3000\n"
+OUTLINE_RANGE_CONFIG = b"citadel_player_outline_fade_range_max 10000\n"
 OUTLINE_COLOR_INTERNAL = "scripts/generic_data.vdata_c"
 DEFAULT_OUTLINE_COLOR = (162, 34, 34)
 OUTLINE_WIDTH_SCALE = 2.0
@@ -249,7 +249,7 @@ def build(mode="deutan", severity=1.0, gain=1.0,
     if outline_shader is not None:
         payload[SHADER_INTERNAL] = outline_shader
         payload[OUTLINE_RANGE_INTERNAL] = OUTLINE_RANGE_CONFIG
-        log("  enemy outline fade endpoint: default -> 3000 game units")
+        log("  enemy outline fade endpoint: default -> 10000 game units")
     if outline_color is not None:
         color_resource = patch_enemy_outline_color(outline_color, log=log)
         if color_resource is not None:

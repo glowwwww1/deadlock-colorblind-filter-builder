@@ -86,6 +86,10 @@ class FilterStudioValidationTests(unittest.TestCase):
             builder.patch_outline_shader(3.0, log=lambda _: None)
 
     def test_outline_range_override_is_exclusive_to_2x(self):
+        self.assertEqual(
+            b"citadel_player_outline_fade_range_max 10000\n",
+            builder.OUTLINE_RANGE_CONFIG,
+        )
         with mock.patch.object(builder, "fetch_originals", return_value={}):
             default_payload = builder.build(
                 mode="off",
