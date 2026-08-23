@@ -9,6 +9,9 @@ using ZstdSharp.Unsafe;
 const int OutlinePhase = 2;
 const int NegativeScaleOffset = 0x2B4;
 const int PositiveScaleOffset = 0x2BC;
+const int FadeConditionOperandOffset = 0x474;
+const uint FadeConditionX = 0x0020800A;
+const uint FadeConditionY = 0x0020801A;
 const int ExternalHeaderSize = 12;
 const int ZstdDictionaryType = -3;
 
@@ -21,7 +24,9 @@ if (args.Length == 2 && args[1] == "--inspect")
     return 0;
 }
 
-if (args.Length != 3
+var disableDistanceFade = args.Length == 4
+    && args[3] == "--disable-distance-fade";
+if ((args.Length != 3 && !disableDistanceFade)
     || !float.TryParse(args[2], NumberStyles.Float, CultureInfo.InvariantCulture,
         out var widthScale)
     || !float.IsFinite(widthScale)
@@ -29,7 +34,7 @@ if (args.Length != 3
 {
     Console.Error.WriteLine(
         "Usage: ShaderPatch <input generate_outlines_pc_50_ps.vcs> "
-        + "<output.vcs> <width-scale>");
+        + "<output.vcs> <width-scale> [--disable-distance-fade]");
     return 2;
 }
 
@@ -74,7 +79,8 @@ using (var resource = new Resource())
 }
 
 var phaseBytecodes = ReadAndPatchPhases(
-    inputPath, widthScale, out var originalPhaseHash);
+    inputPath, widthScale, disableDistanceFade,
+    out var originalPhaseHash, out var originalWidthScale);
 var uncompressedBytecode = phaseBytecodes.SelectMany(bytes => bytes).ToArray();
 if (uncompressedBytecode.Length != originalRawSize)
 {
@@ -110,10 +116,13 @@ compressedBytecode.CopyTo(outputBytes, resourceSize + ExternalHeaderSize);
 
 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 File.WriteAllBytes(outputPath, outputBytes);
-VerifyOutput(outputPath, serializedWidthScale, replacementPhaseHash);
+VerifyOutput(
+    outputPath, serializedWidthScale, replacementPhaseHash,
+    disableDistanceFade);
 
 Console.WriteLine(
-    $"outline distance scale: 1.00x -> {serializedWidthScale:F6}x; "
+    $"outline distance scale: {originalWidthScale:F6}x -> {serializedWidthScale:F6}x; "
+    + $"distance fade: {(disableDistanceFade ? "disabled" : "unchanged")}; "
     + $"typed metadata preserved; zstd levels "
     + $"{metadataCompressionLevel}/{sizeCompressionLevel}/{compressionLevel}; "
     + $"wrote {outputPath} ({outputBytes.Length} bytes)");
@@ -126,7 +135,8 @@ catch (Exception exception)
 }
 
 static List<byte[]> ReadAndPatchPhases(
-    string inputPath, float widthScale, out byte[] originalPhaseHash)
+    string inputPath, float widthScale, bool disableDistanceFade,
+    out byte[] originalPhaseHash, out float originalWidthScale)
 {
     using var program = new VfxProgramData();
     program.Read(inputPath);
@@ -161,16 +171,32 @@ static List<byte[]> ReadAndPatchPhases(
 
     var outline = phases[OutlinePhase];
     originalPhaseHash = MD5.HashData(outline);
-    if (BitConverter.ToSingle(outline, NegativeScaleOffset) != -1.0f
-        || BitConverter.ToSingle(outline, PositiveScaleOffset) != 1.0f)
+    var originalNegative = BitConverter.ToSingle(outline, NegativeScaleOffset);
+    var originalPositive = BitConverter.ToSingle(outline, PositiveScaleOffset);
+    if (!float.IsFinite(originalPositive)
+        || originalPositive <= 0.0f
+        || originalNegative != -originalPositive)
     {
         throw new InvalidDataException(
             "Could not identify the phase-2 signed-distance scale. "
             + "The game shader may have changed.");
     }
+    originalWidthScale = 1.0f / originalPositive;
 
     BitConverter.GetBytes(-1.0f / widthScale).CopyTo(outline, NegativeScaleOffset);
     BitConverter.GetBytes(1.0f / widthScale).CopyTo(outline, PositiveScaleOffset);
+    if (disableDistanceFade)
+    {
+        var fadeOperand = BitConverter.ToUInt32(outline, FadeConditionOperandOffset);
+        if (fadeOperand != FadeConditionX && fadeOperand != FadeConditionY)
+        {
+            throw new InvalidDataException(
+                "Could not identify the phase-2 distance-fade condition. "
+                + "The game shader may have changed.");
+        }
+        BitConverter.GetBytes(FadeConditionY).CopyTo(
+            outline, FadeConditionOperandOffset);
+    }
     DxbcChecksum.Compute(outline).CopyTo(outline, 4);
     VerifyDxbcChecksum(outline, "patched phase 2");
     return phases;
@@ -426,7 +452,9 @@ static int PatchHashInMetadataFrame(
         "Patched phase hash could not be recompressed to the original metadata-frame size.");
 }
 
-static void VerifyOutput(string outputPath, float widthScale, byte[] expectedHash)
+static void VerifyOutput(
+    string outputPath, float widthScale, byte[] expectedHash,
+    bool disableDistanceFade)
 {
     using var program = new VfxProgramData();
     program.Read(outputPath);
@@ -442,6 +470,14 @@ static void VerifyOutput(string outputPath, float widthScale, byte[] expectedHas
     if (negative != -1.0f / widthScale || positive != 1.0f / widthScale)
     {
         throw new InvalidDataException("Serialized outline-width scale verification failed.");
+    }
+    var fadeOperand = BitConverter.ToUInt32(bytecode, FadeConditionOperandOffset);
+    var expectedFadeOperand = disableDistanceFade
+        ? FadeConditionY
+        : FadeConditionX;
+    if (fadeOperand != expectedFadeOperand)
+    {
+        throw new InvalidDataException("Serialized distance-fade verification failed.");
     }
     if (!MD5.HashData(bytecode).AsSpan().SequenceEqual(expectedHash))
     {
