@@ -1,0 +1,17 @@
+* text=auto
+*.py text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.cs text eol=lf
+*.csproj text eol=lf
+*.asm text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.vcs binary
+*.vpost_c binary
+*.vdata_c binary
+*.dxbc binary

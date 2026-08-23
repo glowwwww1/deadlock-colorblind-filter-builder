@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.vpk
+build/
+panorama_ui/
+tools/vrf/
+tools/vdata_patch/bin/
+tools/vdata_patch/obj/
+tools/shader_patch/bin/
+tools/shader_patch/obj/
+backup/.dmm.json
+backup/gameinfo.gi
+current_settings.txt
+exceptions.txt
+preview.png
+.cb_bridge_stop
