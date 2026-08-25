@@ -365,30 +365,57 @@ function createRenderer() {
   let imageReady = false;
   let imageGeneration = 0;
   let nvidiaMode = null;
-  let nvidiaLoadingMode = null;
+  const nvidiaImages = new Map();
+  const nvidiaPromises = new Map();
+  const nvidiaUploadPending = new Set();
+
+  function uploadNvidiaTexture(mode, image) {
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, nvidiaTexture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    nvidiaMode = mode;
+  }
+
+  function loadNvidiaImage(mode) {
+    if (nvidiaImages.has(mode)) return Promise.resolve(nvidiaImages.get(mode));
+    if (nvidiaPromises.has(mode)) return nvidiaPromises.get(mode);
+    const promise = new Promise((resolve, reject) => {
+      const transform = new Image();
+      transform.fetchPriority = "high";
+      transform.addEventListener("load", () => {
+        nvidiaImages.set(mode, transform);
+        nvidiaPromises.delete(mode);
+        resolve(transform);
+      }, { once: true });
+      transform.addEventListener("error", () => {
+        nvidiaPromises.delete(mode);
+        reject(new Error("Could not load the NVIDIA reference transform."));
+      }, { once: true });
+      transform.src = mode === "protan" ? "assets/protanopia.png" : "assets/deuteranopia.png";
+    });
+    nvidiaPromises.set(mode, promise);
+    return promise;
+  }
 
   function ensureNvidiaTexture(mode) {
     if (mode !== "protan" && mode !== "deutan") return false;
     if (nvidiaMode === mode) return true;
-    if (nvidiaLoadingMode === mode) return false;
-    nvidiaLoadingMode = mode;
-    const transform = new Image();
-    transform.addEventListener("load", () => {
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, nvidiaTexture);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, transform);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      nvidiaMode = mode;
-      nvidiaLoadingMode = null;
-      api.render();
-    });
-    transform.addEventListener("error", () => {
-      nvidiaLoadingMode = null;
-      showStatus("Could not load the NVIDIA reference transform.", "error");
-    });
-    transform.src = mode === "protan" ? "assets/protanopia.png" : "assets/deuteranopia.png";
+    if (nvidiaImages.has(mode)) {
+      uploadNvidiaTexture(mode, nvidiaImages.get(mode));
+      return true;
+    }
+    if (!nvidiaUploadPending.has(mode)) {
+      nvidiaUploadPending.add(mode);
+      loadNvidiaImage(mode).then(image => {
+        if (state.algorithm === "nvidia" && state.mode === mode) {
+          uploadNvidiaTexture(mode, image);
+          api.render();
+        }
+      }).catch(error => showStatus(error.message, "error")).finally(() => nvidiaUploadPending.delete(mode));
+    }
     return false;
   }
 
@@ -426,7 +453,12 @@ function createRenderer() {
           showStatus("Could not load the selected preview image.", "error");
         }
       });
+      image.fetchPriority = "high";
       image.src = url;
+    },
+    prefetchNvidia(mode) {
+      if (mode !== "protan" && mode !== "deutan") return Promise.resolve();
+      return loadNvidiaImage(mode).catch(error => showStatus(error.message, "error"));
     },
   };
   return api;
@@ -491,7 +523,7 @@ function selectPreviewImage(index) {
   renderer?.loadImage(`demo/${encodeURIComponent(entry.id)}`);
 }
 
-async function initializeImages() {
+async function initializeImages(priorityAssets) {
   const thumbnails = document.getElementById("previewThumbnails");
   const previous = document.getElementById("previousImage");
   const next = document.getElementById("nextImage");
@@ -510,15 +542,19 @@ async function initializeImages() {
       "demo_image2.png",
       "demo_image7.png",
     ].map((id, index) => ({ id, label: `Scene ${index + 1}` }));
+    const thumbnailImages = [];
     thumbnails.replaceChildren(...previewImages.map((entry, index) => {
       const button = document.createElement("button");
       button.className = "preview-thumbnail";
       button.type = "button";
       button.setAttribute("aria-label", `Show ${entry.label}`);
       const image = document.createElement("img");
-      image.src = `demo/${encodeURIComponent(entry.id)}`;
+      image.dataset.src = `demo/${encodeURIComponent(entry.id)}`;
+      if (index === 0) image.src = image.dataset.src;
       image.alt = "";
       image.draggable = false;
+      image.fetchPriority = "low";
+      thumbnailImages.push(image);
       button.appendChild(image);
       button.addEventListener("click", () => selectPreviewImage(index));
       return button;
@@ -526,6 +562,11 @@ async function initializeImages() {
     previous.disabled = previewImages.length < 2;
     next.disabled = previewImages.length < 2;
     selectPreviewImage(0);
+    Promise.resolve(priorityAssets).finally(() => {
+      for (const image of thumbnailImages) {
+        if (!image.src) image.src = image.dataset.src;
+      }
+    });
   } catch (error) {
     previous.disabled = true;
     next.disabled = true;
@@ -537,12 +578,14 @@ function initialize() {
   setupControls();
   setupDivider();
   applyState();
+  let priorityAssets = Promise.resolve();
   try {
     renderer = createRenderer();
+    if (state.algorithm === "nvidia") priorityAssets = renderer.prefetchNvidia(state.mode);
   } catch (error) {
     showStatus(error.message, "error");
   }
-  initializeImages();
+  initializeImages(priorityAssets);
 }
 
 initialize();
