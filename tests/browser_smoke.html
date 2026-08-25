@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="../docs/">
+  <title>Browser builder smoke test</title>
+</head>
+<body data-status="running">Running</body>
+<script src="browser_builder.js"></script>
+<script>
+window.addEventListener("load", async () => {
+  try {
+    const output = await DeadlockBrowserBuilder.buildVpk({
+      mode: "deutan",
+      algorithm: "nvidia",
+      severity: 0.65,
+      luminance: 1,
+      healthbars: true,
+      thickness: 2,
+      outlineColor: "#ffffb0",
+    });
+    const view = new DataView(output.buffer, output.byteOffset, output.byteLength);
+    if (view.getUint32(0, true) !== 0x55aa1234 || output.length < 2000000) {
+      throw new Error("Generated VPK failed validation");
+    }
+    const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", output))]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+    document.body.dataset.status = "passed";
+    document.body.textContent = `Passed ${output.length} ${digest}`;
+    fetch(`../browser-result-passed-${output.length}-${digest}`).catch(() => {});
+  } catch (error) {
+    document.body.dataset.status = "failed";
+    document.body.textContent = error.stack || error.message || String(error);
+    fetch(`../browser-result-failed-${encodeURIComponent(document.body.textContent)}`).catch(() => {});
+  }
+});
+</script>
+</html>

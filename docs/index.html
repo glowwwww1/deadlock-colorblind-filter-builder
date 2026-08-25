@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deadlock Color-blind Filter Mod Builder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Deadlock Color-blind Filter Mod Builder</h1>
+  </header>
+
+  <main>
+    <div class="notice">
+      Note: Unlike the website preview, the in-game filter affects the 3D scene. Healthbars are only affected when that option is enabled, and other HUD or UI elements are not affected.
+    </div>
+
+    <div class="layout">
+      <section class="preview-section">
+        <div class="section-title">
+          <h2>Preview</h2>
+          <span>Drag the divider</span>
+        </div>
+        <div class="preview" id="preview">
+          <canvas id="previewCanvas"></canvas>
+          <span class="preview-label original">Original</span>
+          <span class="preview-label filtered">Filtered</span>
+          <div class="divider" id="divider" role="separator" aria-label="Comparison divider" tabindex="0">
+            <button type="button" tabindex="-1" aria-hidden="true">↔</button>
+          </div>
+          <button class="preview-arrow previous" id="previousImage" type="button" aria-label="Previous preview image">&lsaquo;</button>
+          <button class="preview-arrow next" id="nextImage" type="button" aria-label="Next preview image">&rsaquo;</button>
+        </div>
+        <div class="preview-thumbnails" id="previewThumbnails" aria-label="Preview images"></div>
+      </section>
+
+      <section class="settings">
+        <div class="section-title">
+          <h2>Filter settings</h2>
+          <button class="link-button" id="resetButton" type="button">Reset</button>
+        </div>
+
+        <div class="preset-row" aria-label="Colorblind presets">
+          <button type="button" data-mode="deutan">Deutan</button>
+          <button type="button" data-mode="protan">Protan</button>
+          <button type="button" data-mode="tritan">Tritan</button>
+          <button type="button" data-mode="off">Off</button>
+        </div>
+
+        <label class="select-control">
+          <span>Correction algorithm</span>
+          <select id="algorithm">
+            <option value="nvidia">NVIDIA luminance-preserving</option>
+            <option value="classic">Classic daltonization</option>
+          </select>
+        </label>
+
+        <div id="filterControls"></div>
+
+        <hr>
+        <h2>Healthbars</h2>
+        <p class="outline-warning">Healthbar changes will work in-game, but they will not appear in this website's preview.</p>
+        <button class="toggle-button" id="healthbarToggle" type="button" aria-pressed="false">Apply filter to healthbars</button>
+
+        <hr>
+        <h2>Enemy outline</h2>
+        <p class="outline-warning">Outline changes will work in-game, but they will not appear in this website's preview.</p>
+        <div class="outline-setting">
+          <span class="choice-label">Thickness</span>
+          <div class="outline-options" role="group" aria-label="Enemy outline thickness">
+            <button type="button" data-thickness="1">1×</button>
+            <button type="button" data-thickness="2">2×</button>
+          </div>
+        </div>
+        <label class="color-control">
+          <span>Color <output id="outlineColorValue">#A22222</output></span>
+          <input id="outlineColor" type="color" value="#a22222">
+        </label>
+
+        <button class="build-button" id="downloadButton" type="button">Build and download VPK</button>
+        <p class="status" id="buildStatus" role="status"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="browser_builder.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
