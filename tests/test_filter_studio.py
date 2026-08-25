@@ -85,30 +85,6 @@ class FilterStudioValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             builder.patch_outline_shader(3.0, log=lambda _: None)
 
-    def test_outline_range_override_is_exclusive_to_2x(self):
-        self.assertEqual(
-            b"citadel_player_outline_fade_range_max 10000\n",
-            builder.OUTLINE_RANGE_CONFIG,
-        )
-        with mock.patch.object(builder, "fetch_originals", return_value={}):
-            default_payload = builder.build(
-                mode="off",
-                outline_width_scale=1.0,
-                log=lambda _: None,
-            )
-            thick_payload = builder.build(
-                mode="off",
-                outline_width_scale=2.0,
-                log=lambda _: None,
-            )
-        self.assertNotIn(builder.SHADER_INTERNAL, default_payload)
-        self.assertNotIn(builder.OUTLINE_RANGE_INTERNAL, default_payload)
-        self.assertIn(builder.SHADER_INTERNAL, thick_payload)
-        self.assertEqual(
-            builder.OUTLINE_RANGE_CONFIG,
-            thick_payload[builder.OUTLINE_RANGE_INTERNAL],
-        )
-
     def test_bundled_health_styles_are_complete(self):
         with mock.patch.object(builder, "GAME_PAK", "missing-game-pak.vpk"):
             originals = builder.fetch_health_style_originals()

@@ -37,8 +37,6 @@ HEALTH_STYLE_BACKUP = os.path.join(HERE, "backup", "original_vcss")
 STATE = os.path.join(HERE, "current_settings.txt")
 
 SHADER_INTERNAL = "shaders/vfx/generate_outlines_pc_50_ps.vcs"
-OUTLINE_RANGE_INTERNAL = "cfg/autoexec.cfg"
-OUTLINE_RANGE_CONFIG = b"citadel_player_outline_fade_range_max 10000\n"
 OUTLINE_COLOR_INTERNAL = "scripts/generic_data.vdata_c"
 HEALTH_STYLE_INTERNALS = (
     "panorama/styles/hud_health.vcss_c",
@@ -312,8 +310,7 @@ def patch_outline_shader(width_scale=OUTLINE_WIDTH_SCALE, log=print):
             raise RuntimeError(
                 "the prebuilt %.0fx outline shader is missing or damaged"
                 % width_scale)
-        log("  outline halo width: 1.00x -> %.2fx with extended fade range"
-            % width_scale)
+        log("  outline halo width: 1.00x -> %.2fx" % width_scale)
         return patched
     raise ValueError(
         "outline width scale must be 1 or 2; other compiled scales are rejected by Deadlock")
@@ -364,8 +361,6 @@ def build(mode="deutan", severity=1.0, gain=1.0,
     outline_shader = patch_outline_shader(outline_width_scale, log=log)
     if outline_shader is not None:
         payload[SHADER_INTERNAL] = outline_shader
-        payload[OUTLINE_RANGE_INTERNAL] = OUTLINE_RANGE_CONFIG
-        log("  enemy outline fade endpoint: default -> 10000 game units")
     if outline_color is not None:
         color_resource = patch_enemy_outline_color(outline_color, log=log)
         if color_resource is not None:

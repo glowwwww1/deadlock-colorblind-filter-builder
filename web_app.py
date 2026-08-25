@@ -167,9 +167,6 @@ class Handler(BaseHTTPRequestHandler):
             "/index.html": WEB_ROOT / "index.html",
             "/styles.css": WEB_ROOT / "styles.css",
             "/app.js": WEB_ROOT / "app.js",
-            "/find-deadlock-local-files.png": (
-                WEB_ROOT / "assets" / "find-deadlock-local-files.png"
-            ),
         }.get(path)
         if static is None:
             return self.send_error(404)
