@@ -48,35 +48,50 @@ HEALTH_STYLE_INTERNALS = (
     "panorama/styles/unit_status_old.vcss_c",
     "panorama/styles/unit_status_v2.vcss_c",
 )
+HEALTH_NAMED_COLORS = {
+    "colorEnemy": (255, 65, 13),
+    "colorFriendly": (0, 255, 153),
+    "courageBrightColor": (236, 151, 25),
+    "darkblue": (0, 0, 139),
+    "darkorange": (255, 140, 0),
+    "lightgreen": (144, 238, 144),
+    "spiritBrightColor": (206, 144, 255),
+    "vivaciousGreen": (20, 35, 4),
+}
 HEALTH_COLOR_LITERALS = {
     "panorama/styles/hud_health.vcss_c": (
         "#FCFF6D", "#FF410D", "#FFE3DB", "#4bdc68", "rgb(232, 127, 61)",
         "rgb(122, 165, 69)", "#00FF99", "#FFEFD7", "#cc340a", "#f6805f",
-        "#00D37F", "#FF5656", "#580000",
+        "#00D37F", "#FF5656", "#580000", "colorEnemy", "colorFriendly",
+        "courageBrightColor", "spiritBrightColor",
     ),
     "panorama/styles/hud_health_container.vcss_c": (
         "#D74949", "#DDFF56", "#FF5656", "rgb(255, 130, 130)", "#FFED79",
+        "lightgreen", "vivaciousGreen",
     ),
     "panorama/styles/hud_health_pips.vcss_c": (
         "#E4D0B2", "#87FF87", "#FF410D", "#E7B659", "#5B79E6", "#8B0000",
         "#FF8787", "#7DDAB0", "#78c2ff", "#00FFFF", "#AED6F1",
         "rgba( 255, 215, 216, 1 )", "rgba( 133, 255, 133, 1 )",
-        "rgba( 255, 250, 219, 1 )",
+        "rgba( 10, 230, 80, 0 )", "rgba( 255, 250, 219, 1 )",
+        "darkblue", "darkorange",
     ),
     "panorama/styles/hud_health_single_bar.vcss_c": (
         "#FCFF6D", "#FF410D", "#FFE3DB", "rgb(119, 219, 119)",
         "rgb(232, 127, 61)", "#00FF99", "#FFEFD7", "#cc340a", "#f6805f",
-        "#00D37F", "#FF5656", "#580000",
+        "#00D37F", "#FF5656", "#580000", "colorEnemy", "colorFriendly",
     ),
-    "panorama/styles/hud_health_stacked.vcss_c": ("#4bdc68",),
+    "panorama/styles/hud_health_stacked.vcss_c": (
+        "#4bdc68", "courageBrightColor", "spiritBrightColor",
+    ),
     "panorama/styles/unit_status.vcss_c": (
         "#E7B659", "#5B79E6", "#5befb5", "#fd4949", "#FFEFD7", "#ffedb8",
         "#f24d4d", "#ffe55b", "#504c47", "#fcb43d", "#e29afd", "#46e2ac",
         "rgb(113, 0, 0)", "#b82323", "#5fff80", "#e9e76a", "#6a75e9",
-        "#b95f5f", "#acca91",
+        "#b95f5f", "#acca91", "#62FBBE", "lightgreen",
     ),
     "panorama/styles/unit_status_old.vcss_c": (
-        "#E7B659", "#5B79E6", "#7DDAB0",
+        "#E7B659", "#5B79E6", "#7DDAB0", "#62FBBE", "lightgreen",
     ),
     "panorama/styles/unit_status_v2.vcss_c": (
         "#E7B659", "#5B79E6", "#5befb5", "#fd4949", "#FFEFD7", "#ffedb8",
@@ -84,7 +99,7 @@ HEALTH_COLOR_LITERALS = {
         "rgb(67, 12, 12)", "rgb(64, 8, 8)", "rgb(80, 2, 2)", "#b82323",
         "rgb(74, 15, 15)", "#bf3333", "#c13030", "#d8d2af", "#c7c19d",
         "#5fff80", "#e9e76a", "#6a75e9", "#b95f5f", "#acca91", "#FB4949",
-        "rgb(255, 194, 194)",
+        "rgb(255, 194, 194)", "#62FBBE", "lightgreen",
     ),
 }
 DEFAULT_OUTLINE_COLOR = (162, 34, 34)
@@ -205,10 +220,21 @@ def fetch_health_style_originals():
 
 
 def _parse_css_color(value):
+    if value in HEALTH_NAMED_COLORS:
+        return HEALTH_NAMED_COLORS[value]
     if value.startswith("#"):
         return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
     numbers = [int(part) for part in re.findall(r"\d+", value)]
     return tuple(numbers[:3])
+
+
+def _format_css_color(value, rgb):
+    alpha = ""
+    if value.startswith("rgba"):
+        numbers = re.findall(r"[\d.]+", value)
+        opacity = float(numbers[3])
+        alpha = "%02X" % int(np.clip(np.rint(opacity * 255.0), 0, 255))
+    return ("#%02X%02X%02X%s" % (*rgb, alpha)).encode("ascii")
 
 
 def _transform_health_rgb(rgb, mode, severity, gain, filter_config):
@@ -235,7 +261,7 @@ def patch_health_styles(mode="deutan", severity=1.0, gain=1.0,
             original = literal.encode("ascii")
             rgb = _transform_health_rgb(
                 _parse_css_color(literal), mode, severity, gain, filter_config)
-            replacement = ("#%02X%02X%02X" % rgb).encode("ascii")
+            replacement = _format_css_color(literal, rgb)
             if len(replacement) > len(original):
                 raise ValueError("health-bar color replacement exceeds its source length")
             count = patched.count(original)

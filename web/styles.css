@@ -56,6 +56,7 @@ main { width: min(1400px, calc(100% - 40px)); margin: 24px auto 50px; }
 .preset-row button, .outline-options button, .toggle-button { padding: 9px 6px; border: 1px solid var(--border); color: var(--text); background: #101312; cursor: pointer; }
 .preset-row button.active, .outline-options button.active, .toggle-button.active { border-color: var(--accent); color: #ffd38e; }
 .toggle-button { width: 100%; }
+.outline-options button.active::before, .toggle-button.active::before { margin-right: 6px; content: "✓"; }
 
 .select-control { display: grid; gap: 6px; margin: 13px 0; color: #d7dad7; font-size: 12px; }
 select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); color: var(--text); background: #0e1110; }
