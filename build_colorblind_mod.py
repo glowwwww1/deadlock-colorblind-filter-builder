@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,12 +33,62 @@ OUTLINE_COLOR_BACKUP = os.path.join(
     HERE, "backup", "original_vdata", "generic_data.vdata_c")
 OUTLINE_COLOR_BUILD = os.path.join(
     HERE, "build", "scripts", "generic_data.vdata_c")
+HEALTH_STYLE_BACKUP = os.path.join(HERE, "backup", "original_vcss")
 STATE = os.path.join(HERE, "current_settings.txt")
 
 SHADER_INTERNAL = "shaders/vfx/generate_outlines_pc_50_ps.vcs"
 OUTLINE_RANGE_INTERNAL = "cfg/autoexec.cfg"
 OUTLINE_RANGE_CONFIG = b"citadel_player_outline_fade_range_max 10000\n"
 OUTLINE_COLOR_INTERNAL = "scripts/generic_data.vdata_c"
+HEALTH_STYLE_INTERNALS = (
+    "panorama/styles/hud_health.vcss_c",
+    "panorama/styles/hud_health_container.vcss_c",
+    "panorama/styles/hud_health_pips.vcss_c",
+    "panorama/styles/hud_health_single_bar.vcss_c",
+    "panorama/styles/hud_health_stacked.vcss_c",
+    "panorama/styles/unit_status.vcss_c",
+    "panorama/styles/unit_status_old.vcss_c",
+    "panorama/styles/unit_status_v2.vcss_c",
+)
+HEALTH_COLOR_LITERALS = {
+    "panorama/styles/hud_health.vcss_c": (
+        "#FCFF6D", "#FF410D", "#FFE3DB", "#4bdc68", "rgb(232, 127, 61)",
+        "rgb(122, 165, 69)", "#00FF99", "#FFEFD7", "#cc340a", "#f6805f",
+        "#00D37F", "#FF5656", "#580000",
+    ),
+    "panorama/styles/hud_health_container.vcss_c": (
+        "#D74949", "#DDFF56", "#FF5656", "rgb(255, 130, 130)", "#FFED79",
+    ),
+    "panorama/styles/hud_health_pips.vcss_c": (
+        "#E4D0B2", "#87FF87", "#FF410D", "#E7B659", "#5B79E6", "#8B0000",
+        "#FF8787", "#7DDAB0", "#78c2ff", "#00FFFF", "#AED6F1",
+        "rgba( 255, 215, 216, 1 )", "rgba( 133, 255, 133, 1 )",
+        "rgba( 255, 250, 219, 1 )",
+    ),
+    "panorama/styles/hud_health_single_bar.vcss_c": (
+        "#FCFF6D", "#FF410D", "#FFE3DB", "rgb(119, 219, 119)",
+        "rgb(232, 127, 61)", "#00FF99", "#FFEFD7", "#cc340a", "#f6805f",
+        "#00D37F", "#FF5656", "#580000",
+    ),
+    "panorama/styles/hud_health_stacked.vcss_c": ("#4bdc68",),
+    "panorama/styles/unit_status.vcss_c": (
+        "#E7B659", "#5B79E6", "#5befb5", "#fd4949", "#FFEFD7", "#ffedb8",
+        "#f24d4d", "#ffe55b", "#504c47", "#fcb43d", "#e29afd", "#46e2ac",
+        "rgb(113, 0, 0)", "#b82323", "#5fff80", "#e9e76a", "#6a75e9",
+        "#b95f5f", "#acca91",
+    ),
+    "panorama/styles/unit_status_old.vcss_c": (
+        "#E7B659", "#5B79E6", "#7DDAB0",
+    ),
+    "panorama/styles/unit_status_v2.vcss_c": (
+        "#E7B659", "#5B79E6", "#5befb5", "#fd4949", "#FFEFD7", "#ffedb8",
+        "#f24d4d", "#ffe55b", "#504c47", "#fcb43d", "#e29afd", "#46e2ac",
+        "rgb(67, 12, 12)", "rgb(64, 8, 8)", "rgb(80, 2, 2)", "#b82323",
+        "rgb(74, 15, 15)", "#bf3333", "#c13030", "#d8d2af", "#c7c19d",
+        "#5fff80", "#e9e76a", "#6a75e9", "#b95f5f", "#acca91", "#FB4949",
+        "rgb(255, 194, 194)",
+    ),
+}
 DEFAULT_OUTLINE_COLOR = (162, 34, 34)
 OUTLINE_WIDTH_SCALE = 2.0
 SHADER_HELPER = os.path.join(
@@ -135,6 +186,71 @@ def fetch_outline_color_original():
         with open(OUTLINE_COLOR_BACKUP, "wb") as handle:
             handle.write(data)
     return OUTLINE_COLOR_BACKUP
+
+
+def fetch_health_style_originals():
+    os.makedirs(HEALTH_STYLE_BACKUP, exist_ok=True)
+    result = {}
+    for internal in HEALTH_STYLE_INTERNALS:
+        cached = os.path.join(HEALTH_STYLE_BACKUP, os.path.basename(internal))
+        if os.path.exists(cached):
+            with open(cached, "rb") as handle:
+                result[internal] = handle.read()
+        elif os.path.exists(GAME_PAK):
+            data = extract(GAME_PAK, internal)
+            with open(cached, "wb") as handle:
+                handle.write(data)
+            result[internal] = data
+        else:
+            raise FileNotFoundError("missing bundled health-bar style: %s" % internal)
+    return result
+
+
+def _parse_css_color(value):
+    if value.startswith("#"):
+        return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
+    numbers = [int(part) for part in re.findall(r"\d+", value)]
+    return tuple(numbers[:3])
+
+
+def _transform_health_rgb(rgb, mode, severity, gain, filter_config):
+    source = np.array(rgb, dtype=np.float64).reshape(1, 3) / 255.0
+    if filter_config is None:
+        transformed = cf.apply_mode(source, mode, severity, gain)
+    else:
+        transformed = cf.apply_custom(source, filter_config)
+    return tuple(np.clip(np.rint(transformed[0] * 255.0), 0, 255).astype(int))
+
+
+def patch_health_styles(mode="deutan", severity=1.0, gain=1.0,
+                        filter_config=None, log=print):
+    active = (not cf.custom_filter_is_identity(filter_config)
+              if filter_config is not None else mode != "off")
+    if not active:
+        log("  health bars: original colors")
+        return {}
+    result = {}
+    for internal, blob in fetch_health_style_originals().items():
+        patched = blob
+        replacements = 0
+        for literal in HEALTH_COLOR_LITERALS[internal]:
+            original = literal.encode("ascii")
+            rgb = _transform_health_rgb(
+                _parse_css_color(literal), mode, severity, gain, filter_config)
+            replacement = ("#%02X%02X%02X" % rgb).encode("ascii")
+            if len(replacement) > len(original):
+                raise ValueError("health-bar color replacement exceeds its source length")
+            count = patched.count(original)
+            if count:
+                patched = patched.replace(original, replacement.ljust(len(original), b" "))
+                replacements += count
+        if replacements == 0:
+            raise ValueError("no health-bar colors found in %s" % internal)
+        if len(patched) != len(blob):
+            raise ValueError("health-bar patch changed resource size")
+        result[internal] = patched
+    log("  filtered health-bar colors in %d Panorama resources" % len(result))
+    return result
 
 
 def patch_enemy_outline_color(rgb, log=print):
@@ -254,6 +370,8 @@ def build(mode="deutan", severity=1.0, gain=1.0,
         color_resource = patch_enemy_outline_color(outline_color, log=log)
         if color_resource is not None:
             payload[OUTLINE_COLOR_INTERNAL] = color_resource
+    payload.update(patch_health_styles(
+        mode, severity, gain, filter_config=filter_config, log=log))
     return payload
 
 

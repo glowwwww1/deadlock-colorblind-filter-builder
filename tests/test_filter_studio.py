@@ -109,6 +109,38 @@ class FilterStudioValidationTests(unittest.TestCase):
             thick_payload[builder.OUTLINE_RANGE_INTERNAL],
         )
 
+    def test_bundled_health_styles_are_complete(self):
+        with mock.patch.object(builder, "GAME_PAK", "missing-game-pak.vpk"):
+            originals = builder.fetch_health_style_originals()
+        self.assertEqual(set(builder.HEALTH_STYLE_INTERNALS), set(originals))
+        self.assertTrue(all(originals.values()))
+
+    def test_health_style_patch_preserves_compiled_resource_sizes(self):
+        config = {
+            "mode": "deutan",
+            "algorithm": "classic",
+            "severity": 1.0,
+            "correction": 0.65,
+            "luminance": 1.0,
+        }
+        originals = builder.fetch_health_style_originals()
+        patched = builder.patch_health_styles(
+            filter_config=config, log=lambda _: None)
+        self.assertEqual(set(originals), set(patched))
+        for internal in originals:
+            self.assertEqual(len(originals[internal]), len(patched[internal]))
+            self.assertNotEqual(originals[internal], patched[internal])
+
+    def test_off_filter_omits_health_style_overrides(self):
+        config = dict(cf.CUSTOM_DEFAULTS, mode="off")
+        with mock.patch.object(builder, "fetch_health_style_originals") as fetch:
+            self.assertEqual(
+                {},
+                builder.patch_health_styles(
+                    filter_config=config, log=lambda _: None),
+            )
+        fetch.assert_not_called()
+
 
 class CustomFilterTests(unittest.TestCase):
     def test_off_with_neutral_tuning_is_byte_eligible_identity(self):
