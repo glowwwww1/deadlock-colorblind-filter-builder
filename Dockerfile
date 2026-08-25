@@ -22,6 +22,7 @@ COPY web/ web/
 COPY demo_images/ demo_images/
 COPY assets/ assets/
 COPY backup/original_vpost/ backup/original_vpost/
+COPY backup/original_vcss/ backup/original_vcss/
 COPY backup/original_shaders/ backup/original_shaders/
 COPY backup/original_vdata/ backup/original_vdata/
 COPY THIRD_PARTY_NOTICES.md ./

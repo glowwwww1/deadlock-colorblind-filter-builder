@@ -5,6 +5,7 @@ const DEFAULTS = Object.freeze({
   algorithm: "nvidia",
   severity: 100,
   luminance: 100,
+  healthbars: false,
   thickness: 1,
   outlineColor: "#a22222",
 });
@@ -100,6 +101,12 @@ function updateOutlineButtons() {
   });
 }
 
+function updateHealthbarToggle() {
+  const button = document.getElementById("healthbarToggle");
+  button.classList.toggle("active", state.healthbars);
+  button.setAttribute("aria-pressed", String(state.healthbars));
+}
+
 function applyState(values = {}) {
   Object.assign(state, DEFAULTS, values);
   document.getElementById("algorithm").value = state.algorithm;
@@ -111,6 +118,7 @@ function applyState(values = {}) {
   }
   updateAvailability();
   updatePresetButtons();
+  updateHealthbarToggle();
   updateOutlineButtons();
   renderer?.render();
 }
@@ -137,6 +145,10 @@ function setupControls() {
       state.thickness = Number(button.dataset.thickness);
       updateOutlineButtons();
     });
+  });
+  document.getElementById("healthbarToggle").addEventListener("click", () => {
+    state.healthbars = !state.healthbars;
+    updateHealthbarToggle();
   });
   document.getElementById("outlineColor").addEventListener("input", event => {
     state.outlineColor = event.target.value;
@@ -428,6 +440,7 @@ function buildPayload() {
       algorithm: state.algorithm,
       severity: state.severity / 100,
       luminance: state.luminance / 100,
+      healthbars: state.healthbars,
     },
     outline: { thickness: state.thickness, color: state.outlineColor },
   };

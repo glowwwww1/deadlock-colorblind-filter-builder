@@ -46,12 +46,13 @@ class FilterStudioValidationTests(unittest.TestCase):
         self.assertGreaterEqual(len(targets), 17)
 
     def test_website_does_not_require_redundant_strength(self):
-        config, _, _ = validate_request(website_request_payload())
+        config, _, _, healthbars = validate_request(website_request_payload())
         self.assertEqual(1.0, config["correction"])
+        self.assertFalse(healthbars)
 
     def test_accepts_website_outline_endpoints(self):
         for thickness in (1.0, 2.0):
-            _, parsed, rgb = validate_request(request_payload(
+            _, parsed, rgb, _ = validate_request(request_payload(
                 thickness=thickness, color="#00D6FF"))
             self.assertEqual(thickness, parsed)
             self.assertEqual((0, 214, 255), rgb)
@@ -74,6 +75,19 @@ class FilterStudioValidationTests(unittest.TestCase):
     def test_rejects_nvidia_for_tritan(self):
         payload = request_payload()
         payload["filter"].update(mode="tritan", algorithm="nvidia")
+        with self.assertRaises(ValueError):
+            validate_request(payload)
+
+    def test_accepts_healthbar_toggle(self):
+        for enabled in (False, True):
+            payload = website_request_payload()
+            payload["filter"]["healthbars"] = enabled
+            _, _, _, parsed = validate_request(payload)
+            self.assertEqual(enabled, parsed)
+
+    def test_rejects_non_boolean_healthbar_toggle(self):
+        payload = website_request_payload()
+        payload["filter"]["healthbars"] = "yes"
         with self.assertRaises(ValueError):
             validate_request(payload)
 

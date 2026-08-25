@@ -13,7 +13,7 @@
 
   <main>
     <div class="notice">
-      Note: Unlike the website preview, the in-game filter affects the 3D scene and health bars, but not other HUD or UI elements.
+      Note: Unlike the website preview, the in-game filter affects the 3D scene. Healthbars are only affected when that option is enabled, and other HUD or UI elements are not affected.
     </div>
 
     <div class="layout">
@@ -57,6 +57,11 @@
         </label>
 
         <div id="filterControls"></div>
+
+        <hr>
+        <h2>Healthbars</h2>
+        <p class="outline-warning">Healthbar changes will work in-game, but they will not appear in this website's preview.</p>
+        <button class="toggle-button" id="healthbarToggle" type="button" aria-pressed="false">Apply filter to healthbars</button>
 
         <hr>
         <h2>Enemy outline</h2>

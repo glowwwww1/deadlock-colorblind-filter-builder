@@ -333,7 +333,7 @@ def separation_scores(mode, severity, gain):
 
 def build(mode="deutan", severity=1.0, gain=1.0,
           outline_width_scale=OUTLINE_WIDTH_SCALE, log=print,
-          filter_config=None, outline_color=None):
+          filter_config=None, outline_color=None, filter_healthbars=True):
     originals = fetch_originals()
     payload, skipped, enabled = {}, [], []
     for internal in sorted(originals):
@@ -365,8 +365,11 @@ def build(mode="deutan", severity=1.0, gain=1.0,
         color_resource = patch_enemy_outline_color(outline_color, log=log)
         if color_resource is not None:
             payload[OUTLINE_COLOR_INTERNAL] = color_resource
-    payload.update(patch_health_styles(
-        mode, severity, gain, filter_config=filter_config, log=log))
+    if filter_healthbars:
+        payload.update(patch_health_styles(
+            mode, severity, gain, filter_config=filter_config, log=log))
+    else:
+        log("  health bars: original colors")
     return payload
 
 

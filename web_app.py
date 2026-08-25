@@ -92,6 +92,9 @@ def validate_request(data):
     for name, (low, high) in FILTER_LIMITS.items():
         filter_config[name] = _number(raw_filter.get(name), name, low, high)
     filter_config["correction"] = 1.0
+    healthbars = raw_filter.get("healthbars", False)
+    if not isinstance(healthbars, bool):
+        raise ValueError("health-bar option must be true or false")
 
     outline = data.get("outline")
     if not isinstance(outline, dict):
@@ -103,11 +106,11 @@ def validate_request(data):
     if not isinstance(color, str) or not HEX_COLOR.fullmatch(color):
         raise ValueError("outline color must use #RRGGBB format")
     rgb = tuple(int(color[index:index + 2], 16) for index in (1, 3, 5))
-    return filter_config, thickness, rgb
+    return filter_config, thickness, rgb, healthbars
 
 
 def generate_vpk(data):
-    filter_config, thickness, outline_rgb = validate_request(data)
+    filter_config, thickness, outline_rgb, filter_healthbars = validate_request(data)
     messages = []
     with BUILD_LOCK:
         payload = builder.build(
@@ -117,6 +120,7 @@ def generate_vpk(data):
             outline_width_scale=thickness,
             filter_config=filter_config,
             outline_color=outline_rgb,
+            filter_healthbars=filter_healthbars,
             log=messages.append,
         )
         with tempfile.TemporaryDirectory(prefix="deadlock_filter_") as temporary:

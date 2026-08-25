@@ -53,8 +53,9 @@ main { width: min(1400px, calc(100% - 40px)); margin: 24px auto 50px; }
 .settings { padding: 18px; border: 1px solid var(--border); background: var(--panel); }
 .link-button { padding: 0; border: 0; border-bottom: 1px solid #777; color: var(--muted); background: transparent; font-size: 11px; cursor: pointer; }
 .preset-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 2px 0 17px; }
-.preset-row button, .outline-options button { padding: 9px 6px; border: 1px solid var(--border); color: var(--text); background: #101312; cursor: pointer; }
-.preset-row button.active, .outline-options button.active { border-color: var(--accent); color: #ffd38e; }
+.preset-row button, .outline-options button, .toggle-button { padding: 9px 6px; border: 1px solid var(--border); color: var(--text); background: #101312; cursor: pointer; }
+.preset-row button.active, .outline-options button.active, .toggle-button.active { border-color: var(--accent); color: #ffd38e; }
+.toggle-button { width: 100%; }
 
 .select-control { display: grid; gap: 6px; margin: 13px 0; color: #d7dad7; font-size: 12px; }
 select { width: 100%; padding: 9px 10px; border: 1px solid var(--border); color: var(--text); background: #0e1110; }
