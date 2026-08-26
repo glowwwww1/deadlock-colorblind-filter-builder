@@ -363,7 +363,8 @@ function createRenderer() {
   const modeNumber = { off: 0, protan: 1, deutan: 2, tritan: 3 };
   const algorithmNumber = { nvidia: 0, classic: 1 };
   let imageReady = false;
-  let imageGeneration = 0;
+let imageGeneration = 0;
+let pendingDownloadEvents = 0;
   let nvidiaMode = null;
   const nvidiaImages = new Map();
   const nvidiaPromises = new Map();
@@ -483,6 +484,26 @@ function showStatus(message, type = "") {
   status.className = `status ${type}`.trim();
 }
 
+function trackCompletedDownload() {
+  if (!window.goatcounter?.count) {
+    pendingDownloadEvents += 1;
+    return;
+  }
+  window.goatcounter.count({
+    path: "mod-download",
+    title: "Generated VPK",
+    event: true,
+    no_session: true,
+  });
+}
+
+document.querySelector("script[data-goatcounter]")?.addEventListener("load", () => {
+  while (pendingDownloadEvents > 0) {
+    pendingDownloadEvents -= 1;
+    trackCompletedDownload();
+  }
+});
+
 async function downloadVpk() {
   const button = document.getElementById("downloadButton");
   button.disabled = true;
@@ -495,6 +516,7 @@ async function downloadVpk() {
       outlineColor: payload.outline.color,
     }, message => showStatus(message));
     const blob = new Blob([packageBytes], { type: "application/octet-stream" });
+    trackCompletedDownload();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
