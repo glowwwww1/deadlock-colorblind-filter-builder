@@ -6,7 +6,6 @@ const DEFAULTS = Object.freeze({
   severity: 100,
   luminance: 100,
   healthbars: false,
-  thickness: 1,
   outlineColor: "#a22222",
 });
 
@@ -92,14 +91,6 @@ function updatePresetButtons() {
   });
 }
 
-function updateOutlineButtons() {
-  document.querySelectorAll("[data-thickness]").forEach(button => {
-    const active = Number(button.dataset.thickness) === state.thickness;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-}
-
 function updateHealthbarToggle() {
   const button = document.getElementById("healthbarToggle");
   button.classList.toggle("active", state.healthbars);
@@ -118,7 +109,6 @@ function applyState(values = {}) {
   updateAvailability();
   updatePresetButtons();
   updateHealthbarToggle();
-  updateOutlineButtons();
   renderer?.render();
 }
 
@@ -137,12 +127,6 @@ function setupControls() {
       updateAvailability();
       updatePresetButtons();
       renderer?.render();
-    });
-  });
-  document.querySelectorAll("[data-thickness]").forEach(button => {
-    button.addEventListener("click", () => {
-      state.thickness = Number(button.dataset.thickness);
-      updateOutlineButtons();
     });
   });
   document.getElementById("healthbarToggle").addEventListener("click", () => {
@@ -474,7 +458,7 @@ function buildPayload() {
       luminance: state.luminance / 100,
       healthbars: state.healthbars,
     },
-    outline: { thickness: state.thickness, color: state.outlineColor },
+    outline: { color: state.outlineColor },
   };
 }
 

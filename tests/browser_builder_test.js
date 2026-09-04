@@ -42,7 +42,6 @@ async function main() {
     severity: 0.65,
     luminance: 0.7,
     healthbars: true,
-    thickness: 2,
     outlineColor: "#ffffb0",
   };
   if (process.argv[4]) {

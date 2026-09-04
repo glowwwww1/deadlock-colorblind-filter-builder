@@ -99,25 +99,22 @@ def validate_request(data):
     outline = data.get("outline")
     if not isinstance(outline, dict):
         raise ValueError("outline settings are missing")
-    thickness = _number(outline.get("thickness"), "outline thickness", 1.0, 2.0)
-    if thickness not in (1.0, 2.0):
-        raise ValueError("outline thickness must be either 1 or 2")
     color = outline.get("color")
     if not isinstance(color, str) or not HEX_COLOR.fullmatch(color):
         raise ValueError("outline color must use #RRGGBB format")
     rgb = tuple(int(color[index:index + 2], 16) for index in (1, 3, 5))
-    return filter_config, thickness, rgb, healthbars
+    return filter_config, rgb, healthbars
 
 
 def generate_vpk(data):
-    filter_config, thickness, outline_rgb, filter_healthbars = validate_request(data)
+    filter_config, outline_rgb, filter_healthbars = validate_request(data)
     messages = []
     with BUILD_LOCK:
         payload = builder.build(
             mode=filter_config["mode"],
             severity=filter_config["severity"],
             gain=filter_config["correction"],
-            outline_width_scale=thickness,
+            outline_width_scale=1.0,
             filter_config=filter_config,
             outline_color=outline_rgb,
             filter_healthbars=filter_healthbars,

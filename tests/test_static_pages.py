@@ -25,7 +25,6 @@ class StaticPagesBuilderTests(unittest.TestCase):
                 "severity": 0.65,
                 "luminance": 0.7,
                 "healthbars": True,
-                "thickness": 2,
                 "outlineColor": "#ffffb0",
             },
             {
@@ -34,7 +33,6 @@ class StaticPagesBuilderTests(unittest.TestCase):
                 "severity": 1.0,
                 "luminance": 0.25,
                 "healthbars": False,
-                "thickness": 1,
                 "outlineColor": "#a22222",
             },
             {
@@ -43,7 +41,6 @@ class StaticPagesBuilderTests(unittest.TestCase):
                 "severity": 0.35,
                 "luminance": 1.0,
                 "healthbars": True,
-                "thickness": 1,
                 "outlineColor": "#123456",
             },
         )
@@ -74,7 +71,7 @@ class StaticPagesBuilderTests(unittest.TestCase):
                     mode=settings["mode"],
                     severity=settings["severity"],
                     gain=1.0,
-                    outline_width_scale=settings["thickness"],
+                    outline_width_scale=1.0,
                     filter_config=config,
                     outline_color=outline,
                     filter_healthbars=settings["healthbars"],

@@ -10,7 +10,7 @@ from web_app import demo_image_entries, validate_request
 
 
 def request_payload(**outline_overrides):
-    outline = {"thickness": 2.0, "color": "#A22222"}
+    outline = {"color": "#A22222"}
     outline.update(outline_overrides)
     return {
         "filter": dict(cf.CUSTOM_DEFAULTS),
@@ -46,21 +46,14 @@ class FilterStudioValidationTests(unittest.TestCase):
         self.assertGreaterEqual(len(targets), 17)
 
     def test_website_does_not_require_redundant_strength(self):
-        config, _, _, healthbars = validate_request(website_request_payload())
+        config, _, healthbars = validate_request(website_request_payload())
         self.assertEqual(1.0, config["correction"])
         self.assertFalse(healthbars)
 
-    def test_accepts_website_outline_endpoints(self):
-        for thickness in (1.0, 2.0):
-            _, parsed, rgb, _ = validate_request(request_payload(
-                thickness=thickness, color="#00D6FF"))
-            self.assertEqual(thickness, parsed)
-            self.assertEqual((0, 214, 255), rgb)
-
-    def test_rejects_non_option_outline_values(self):
-        for thickness in (0.5, 1.5, 3.0, 4.0):
-            with self.assertRaises(ValueError):
-                validate_request(request_payload(thickness=thickness))
+    def test_website_ignores_legacy_thickness_and_accepts_outline_color(self):
+        _, rgb, _ = validate_request(request_payload(
+            thickness=2.0, color="#00D6FF"))
+        self.assertEqual((0, 214, 255), rgb)
 
     def test_rejects_malformed_outline_color(self):
         with self.assertRaises(ValueError):
@@ -82,7 +75,7 @@ class FilterStudioValidationTests(unittest.TestCase):
         for enabled in (False, True):
             payload = website_request_payload()
             payload["filter"]["healthbars"] = enabled
-            _, _, _, parsed = validate_request(payload)
+            _, _, parsed = validate_request(payload)
             self.assertEqual(enabled, parsed)
 
     def test_rejects_non_boolean_healthbar_toggle(self):

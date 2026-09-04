@@ -572,7 +572,6 @@ function validateSettings(settings) {
   if (!Number.isFinite(settings.luminance) || settings.luminance < 0 || settings.luminance > 1) {
     throw new Error("Luminance preservation must be between 0 and 1.");
   }
-  if (![1, 2].includes(settings.thickness)) throw new Error("Outline thickness must be 1 or 2.");
   if (typeof settings.healthbars !== "boolean") throw new Error("Healthbar filtering must be on or off.");
   parseHexColor(settings.outlineColor);
 }
@@ -589,9 +588,6 @@ async function buildVpk(settings, onProgress = () => {}) {
     const original = await fetchBytes(`resources/vpost/${filename}`);
     files.set(`postprocessing/${filename}`, patchVpost(original, settings, nvidiaPixels));
     await new Promise(resolve => setTimeout(resolve, 0));
-  }
-  if (settings.thickness === 2) {
-    files.set("shaders/vfx/generate_outlines_pc_50_ps.vcs", await fetchBytes("resources/outline_2x.vcs"));
   }
   const outline = parseHexColor(settings.outlineColor);
   if (outline.some((value, index) => value !== DEFAULT_OUTLINE[index])) {
